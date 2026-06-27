@@ -18,7 +18,7 @@ st.markdown("""
         div[data-testid="stMetricLabel"] { font-size: 14px; color: #A3A3A3; }
         .block-container { padding-top: 2rem; }
     </style>
-""", unsafe_allowed_html=True)
+""", unsafe_allow_html=True)
 
 st.sidebar.title("🎛️ Control Center")
 refresh_rate = st.sidebar.slider("🔄 Auto-Refresh Interval (s)", 2, 30, 10)
@@ -45,11 +45,9 @@ try:
     df_kpis = run_query(kpi_query)
     
     if not df_kpis.empty:
-        # Layout top metrics cards matching the top header layout of image_7f8b5b.jpg
         cols = st.columns(min(len(df_kpis), 4))
         for idx, row in df_kpis.head(4).iterrows():
             with cols[idx % 4]:
-                # Append correct units based on tag type
                 unit = " Bar" if "PRESSURE" in row['tag_name'].upper() else " Nm³/h"
                 st.metric(label=f"{row['department']} ({row['tag_name']})", value=f"{row['value']:.1f}{unit}")
     
@@ -73,15 +71,12 @@ try:
     df_trend = run_query(trend_query, (selected_dept,))
     
     if not df_trend.empty:
-        # Sort ascending for chronological left-to-right line charting
         df_trend = df_trend.iloc[::-1]
         
-        # Calculate summary metrics like the legend in image_7f8b5b.jpg
         mean_val = df_trend['value'].mean()
         max_val = df_trend['value'].max()
         last_val = df_trend['value'].iloc[-1]
         
-        # Build custom styled Plotly figure mimicking Grafana dark theme
         fig = go.Figure()
         
         for tag in df_trend['tag_name'].unique():
@@ -91,13 +86,13 @@ try:
                 y=df_tag['value'],
                 mode='lines',
                 name=f"{tag} (Mean: {mean_val:.1f} Max: {max_val:.1f} Last: {last_val:.1f})",
-                line=dict(color='#56B37F', width=2) # Matching the vibrant green line color
+                line=dict(color='#56B37F', width=2)
             ))
             
         fig.update_layout(
             title=f"Historical Flow Trend — {selected_dept}",
             template="plotly_dark",
-            paper_bgcolor="#161719", # Rich Grafana dark canvas background
+            paper_bgcolor="#161719",
             plot_bgcolor="#161719",
             xaxis=dict(showgrid=True, gridcolor="#24262b", title="Timestamp (ts)"),
             yaxis=dict(showgrid=True, gridcolor="#24262b", title="Flow / Pressure Rates"),
@@ -107,7 +102,6 @@ try:
         
         st.plotly_chart(fig, use_container_width=True)
         
-        # Collapsible Raw Data Table
         with st.expander("👁️ View Live Raw Metric Logs"):
             st.dataframe(df_trend, use_container_width=True)
     else:
@@ -116,6 +110,5 @@ try:
 except Exception as e:
     st.error(f"Error streaming visualization parameters: {e}")
 
-# Continuous background streaming loop
 time.sleep(refresh_rate)
 st.rerun()
