@@ -11,10 +11,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS injected to match the sleek dark Grafana borders and padding
+# Base dark theme styling
 st.markdown("""
     <style>
-        div[data-testid="stMetricValue"] { font-size: 28px; color: #56B37F; }
+        div[data-testid="stMetricValue"] { font-size: 28px; }
         div[data-testid="stMetricLabel"] { font-size: 14px; color: #A3A3A3; }
         .block-container { padding-top: 2rem; }
     </style>
@@ -22,6 +22,10 @@ st.markdown("""
 
 st.sidebar.title("🎛️ Control Center")
 refresh_rate = st.sidebar.slider("🔄 Auto-Refresh Interval (s)", 2, 30, 10)
+
+# --- Define Safety Thresholds ---
+CRITICAL_LOW_PRESSURE = 6.0  # Bar
+CRITICAL_LOW_FLOW = 200.0    # Nm³/h
 
 # --- Database Connection ---
 def run_query(query, params=None):
@@ -48,12 +52,38 @@ try:
         cols = st.columns(min(len(df_kpis), 4))
         for idx, row in df_kpis.head(4).iterrows():
             with cols[idx % 4]:
-                unit = " Bar" if "PRESSURE" in row['tag_name'].upper() else " Nm³/h"
-                st.metric(label=f"{row['department']} ({row['tag_name']})", value=f"{row['value']:.1f}{unit}")
+                is_pressure = "PRESSURE" in row['tag_name'].upper()
+                unit = " Bar" if is_pressure else " Nm³/h"
+                val = row['value']
+                
+                # Check thresholds to determine status color
+                if is_pressure and val < CRITICAL_LOW_PRESSURE:
+                    color_style = "#FF4B4B"  # Critical Red
+                    label_suffix = " ⚠️ CRITICAL LOW"
+                elif not is_pressure and val < CRITICAL_LOW_FLOW:
+                    color_style = "#FF4B4B"  # Critical Red
+                    label_suffix = " ⚠️ CRITICAL LOW"
+                else:
+                    color_style = "#56B37F"  # Normal Vibrant Green
+                    label_suffix = " ✅ Normal"
+                
+                # Inject a unique styled container for each metric card based on its status
+                st.markdown(f"""
+                    <style>
+                        div[data-testid="stMetricColumn"]:nth-of-type({(idx % 4) + 1}) div[data-testid="stMetricValue"] {{
+                            color: {color_style} !important;
+                        }}
+                    </style>
+                """, unsafe_allow_html=True)
+                
+                st.metric(
+                    label=f"{row['department']} ({row['tag_name']}){label_suffix}", 
+                    value=f"{val:.1f}{unit}"
+                )
     
     st.markdown("---")
     
-    # 2. Dropdown Filter Section ("Historical Trend — Select a Department")
+    # 2. Dropdown Filter Section
     st.subheader("📊 Historical Trend Analysis")
     
     dept_list_df = run_query("SELECT DISTINCT department FROM compressed_air_readings ORDER BY department;")
