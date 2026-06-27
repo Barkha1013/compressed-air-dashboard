@@ -14,8 +14,6 @@ st.set_page_config(
 # Base dark theme styling
 st.markdown("""
     <style>
-        div[data-testid="stMetricValue"] { font-size: 28px; }
-        div[data-testid="stMetricLabel"] { font-size: 14px; color: #A3A3A3; }
         .block-container { padding-top: 2rem; }
     </style>
 """, unsafe_allow_html=True)
@@ -56,30 +54,31 @@ try:
                 unit = " Bar" if is_pressure else " Nm³/h"
                 val = row['value']
                 
-                # Check thresholds to determine status color
+                # Determine threshold status
                 if is_pressure and val < CRITICAL_LOW_PRESSURE:
-                    color_style = "#FF4B4B"  # Critical Red
-                    label_suffix = " ⚠️ CRITICAL LOW"
+                    is_critical = True
                 elif not is_pressure and val < CRITICAL_LOW_FLOW:
-                    color_style = "#FF4B4B"  # Critical Red
-                    label_suffix = " ⚠️ CRITICAL LOW"
+                    is_critical = True
                 else:
-                    color_style = "#56B37F"  # Normal Vibrant Green
-                    label_suffix = " ✅ Normal"
+                    is_critical = False
                 
-                # Inject a unique styled container for each metric card based on its status
-                st.markdown(f"""
-                    <style>
-                        div[data-testid="stMetricColumn"]:nth-of-type({(idx % 4) + 1}) div[data-testid="stMetricValue"] {{
-                            color: {color_style} !important;
-                        }}
-                    </style>
-                """, unsafe_allow_html=True)
-                
-                st.metric(
-                    label=f"{row['department']} ({row['tag_name']}){label_suffix}", 
-                    value=f"{val:.1f}{unit}"
-                )
+                # Build bulletproof visual KPI cards using clean markdown container divs
+                if is_critical:
+                    st.markdown(f"""
+                        <div style="background-color: #3b1b1b; padding: 15px; border-radius: 6px; border-left: 5px solid #FF4B4B; margin-bottom: 15px;">
+                            <span style="font-size: 13px; color: #FF8B8B; font-weight: bold;">⚠️ CRITICAL LOW</span><br>
+                            <span style="font-size: 12px; color: #A3A3A3; display: block; margin-top: 2px;">{row['department']} ({row['tag_name']})</span>
+                            <span style="font-size: 28px; color: #FF4B4B; font-weight: bold; display: block; margin-top: 5px;">{val:.1f}{unit}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                        <div style="background-color: #1a241e; padding: 15px; border-radius: 6px; border-left: 5px solid #56B37F; margin-bottom: 15px;">
+                            <span style="font-size: 13px; color: #8BFF8B; font-weight: bold;">✅ NORMAL</span><br>
+                            <span style="font-size: 12px; color: #A3A3A3; display: block; margin-top: 2px;">{row['department']} ({row['tag_name']})</span>
+                            <span style="font-size: 28px; color: #56B37F; font-weight: bold; display: block; margin-top: 5px;">{val:.1f}{unit}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
